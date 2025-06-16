@@ -1,0 +1,71 @@
+<div class="construction-card" [class.external]="construction.isExternal">
+  <div class="construction-header">
+    <h3>{{construction.name}}</h3>
+    <button (click)="onRemove()">Удалить конструкцию</button>
+  </div>
+
+  <div class="form-group">
+    <label>Длина:</label>
+    <input type="number" [(ngModel)]="construction.width" (change)="emitChanges()" min="0.1" step="0.1">
+  </div>
+
+  <div class="form-group">
+    <label>Ширина:</label>
+    <input type="number" [(ngModel)]="construction.height" (change)="emitChanges()" min="0.1" step="0.1">
+  </div>
+
+  <div class="form-group">
+    <label>Площадь (м²):</label>
+    <input type="number" [(ngModel)]="construction.area" (change)="emitChanges()" min="0.1" step="0.1">
+  </div>
+
+  @if (construction.type === 'wall') {
+    <div class="form-group">
+      <label>Ориентация:</label>
+      <select [(ngModel)]="construction.orientation" (change)="emitChanges()">
+        <option value="north">Север</option>
+        <option value="south">Юг</option>
+        <option value="east">Восток</option>
+        <option value="west">Запад</option>
+      </select>
+    </div>
+  }
+
+
+  <div class="form-group">
+    <label>Смежное помещение:</label>
+    <select [(ngModel)]="construction.adjacentTemp" (change)="emitChanges()">
+      @for (opt of adjacentTempOptions; track opt.value) {
+        <option [value]="opt.value">
+          {{opt.label}}
+        </option>
+      }
+    </select>
+  </div>
+
+  <div class="form-group">
+    <label>
+      <input type="checkbox" [(ngModel)]="construction.hasHeatedAdjacent" (change)="emitChanges()">
+      Отапливаемое помещение рядом
+    </label>
+  </div>
+
+  <div class="layers-container">
+    <h4>Слои конструкции (от внутреннего к наружному):</h4>
+
+    @for (layer of construction.layers; let idx = $index; track idx) {
+      <div class="layer-item">
+        <span class="layer-order">{{idx + 1}}.</span>
+        <app-material-layer
+          [layer]="layer"
+          [availableMaterials]="availableMaterials"
+          (layerChange)="onLayerChange($event, idx)"
+          (remove)="onLayerRemove(idx)">
+        </app-material-layer>
+      </div>
+    }
+
+
+    <button (click)="addLayer()">+ Добавить слой</button>
+  </div>
+</div>

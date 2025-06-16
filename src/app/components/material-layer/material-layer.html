@@ -1,0 +1,16 @@
+<div class="layer">
+  <select [ngModel]="layer.material" (ngModelChange)="onMaterialChange($event)">
+    @for (mat of availableMaterials; let idx = $index; track idx) {
+      <option [ngValue]="mat">
+        {{mat.name}} (λ = {{mat.conductivity}} Вт/(м·°C))
+      </option>
+    }
+  </select>
+
+  <input type="number" [ngModel]="layer.thickness"
+         (ngModelChange)="onThicknessChange($event)"
+         step="0.01" min="0.01" placeholder="Толщина">
+  <span>м</span>
+
+  <button (click)="onRemove()">Удалить</button>
+</div>

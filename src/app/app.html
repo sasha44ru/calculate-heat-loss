@@ -115,6 +115,33 @@
 
 
     @if (calculationResult) {
+<!--      <div class="results">-->
+<!--        <h3>Общие теплопотери: {{calculationResult.total | number:'1.0-0'}} Вт</h3>-->
+
+<!--        <div class="result-details">-->
+<!--          <div class="result-item">-->
+<!--            <span class="label">Стены:</span>-->
+<!--            <span class="value">{{calculationResult.details.walls | number:'1.0-0'}} Вт</span>-->
+<!--          </div>-->
+<!--          <div class="result-item">-->
+<!--            <span class="label">Полы:</span>-->
+<!--            <span class="value">{{calculationResult.details.floors | number:'1.0-0'}} Вт</span>-->
+<!--          </div>-->
+<!--          <div class="result-item">-->
+<!--            <span class="label">Потолки:</span>-->
+<!--            <span class="value">{{calculationResult.details.ceilings | number:'1.0-0'}} Вт</span>-->
+<!--          </div>-->
+<!--          <div class="result-item">-->
+<!--            <span class="label">Окна:</span>-->
+<!--            <span class="value">{{calculationResult.details.windows | number:'1.0-0'}} Вт</span>-->
+<!--          </div>-->
+<!--          <div class="result-item">-->
+<!--            <span class="label">Инфильтрация:</span>-->
+<!--            <span class="value">{{calculationResult.details.infiltration | number:'1.0-0'}} Вт</span>-->
+<!--          </div>-->
+<!--        </div>-->
+<!--      </div>-->
+
       <div class="results">
         <h3>Общие теплопотери: {{calculationResult.total | number:'1.0-0'}} Вт</h3>
 
@@ -140,8 +167,118 @@
             <span class="value">{{calculationResult.details.infiltration | number:'1.0-0'}} Вт</span>
           </div>
         </div>
+
+        <!-- Детализированные результаты для всех конструкций -->
+        <div class="detailed-results">
+          <h3>Детализация по конструкциям</h3>
+
+          <!-- Стены -->
+          @if (room.walls.length > 0) {
+            <div class="construction-type-results">
+              <h4>Стены</h4>
+              @for ( wall of room.walls; track wall.id) {
+                <div class="construction-result">
+                <div class="construction-header">
+                  <h5>{{wall.name}}</h5>
+                  <span class="total-loss">{{ getConstructionLoss(wall) | number:'1.0-0' }} Вт</span>
+                </div>
+                <div class="construction-properties">
+                  <span>Площадь: {{wall.area}} м²</span>
+                  <span>Ориентация: {{getOrientationName(wall.orientation)}}</span>
+                  <span>Температура снаружи: {{getAdjacentTempForDisplay(wall)}}°C</span>
+                </div>
+                <div class="layers-results">
+                  @for (layer of wall.layers; track $index) {
+                    <div class="layer-result">
+                      <span class="material">{{layer.material.name}}</span>
+                      <span class="thickness">{{layer.thickness}} м</span>
+                      <span class="conductivity">λ = {{layer.material.conductivity}} Вт/(м·°C)</span>
+                    </div>
+                  }
+                </div>
+              </div>
+              }
+            </div>
+          }
+
+          <!-- Полы -->
+          @if (room.floors.length > 0) {
+            <div class="construction-type-results">
+              <h4>Полы</h4>
+              @for ( floor of room.floors; track floor.id) {
+                <div class="construction-result">
+                  <div class="construction-header">
+                    <h5>{{floor.name}}</h5>
+                    <span class="total-loss">{{ getConstructionLoss(floor) | number:'1.0-0' }} Вт</span>
+                  </div>
+                  <div class="construction-properties">
+                    <span>Площадь: {{floor.area}} м²</span>
+                    <span>Ориентация: {{getOrientationName(floor.orientation)}}</span>
+                    <span>Температура снаружи: {{getAdjacentTempForDisplay(floor)}}°C</span>
+                  </div>
+                  <div class="layers-results">
+                    @for (layer of floor.layers; track $index) {
+                      <div class="layer-result">
+                        <span class="material">{{layer.material.name}}</span>
+                        <span class="thickness">{{layer.thickness}} м</span>
+                        <span class="conductivity">λ = {{layer.material.conductivity}} Вт/(м·°C)</span>
+                      </div>
+                    }
+                  </div>
+                </div>
+              }
+            </div>
+          }
+
+          <!-- Потолки -->
+          @if (room.ceilings.length > 0) {
+            <div class="construction-type-results">
+              <h4>Потолки</h4>
+              @for ( ceiling of room.ceilings; track ceiling.id) {
+                <div class="construction-result">
+                  <div class="construction-header">
+                    <h5>{{ceiling.name}}</h5>
+                    <span class="total-loss">{{ getConstructionLoss(ceiling) | number:'1.0-0' }} Вт</span>
+                  </div>
+                  <div class="construction-properties">
+                    <span>Площадь: {{ceiling.area}} м²</span>
+                    <span>Ориентация: {{getOrientationName(ceiling.orientation)}}</span>
+                    <span>Температура снаружи: {{getAdjacentTempForDisplay(ceiling)}}°C</span>
+                  </div>
+                  <div class="layers-results">
+                    @for (layer of ceiling.layers; track $index) {
+                      <div class="layer-result">
+                        <span class="material">{{layer.material.name}}</span>
+                        <span class="thickness">{{layer.thickness}} м</span>
+                        <span class="conductivity">λ = {{layer.material.conductivity}} Вт/(м·°C)</span>
+                      </div>
+                    }
+                  </div>
+                </div>
+              }
+            </div>
+          }
+
+          <!-- Окна -->
+          @if (room.windows.length > 0) {
+            <div class="construction-type-results">
+              <h4>Окна</h4>
+              @for ( window of room.windows; track window.id) {
+                <div class="construction-result">
+                  <div class="construction-header">
+                    <h5>{{window.name}}</h5>
+                    <span class="total-loss">{{ getConstructionLoss(window) | number:'1.0-0' }} Вт</span>
+                  </div>
+                  <div class="construction-properties">
+                    <span>Площадь: {{window.area}} м²</span>
+                    <span>Тип: {{window.layers[0].material.name}}</span>
+                  </div>
+                </div>
+              }
+            </div>
+          }
+        </div>
       </div>
     }
-
   </aside>
 </div>

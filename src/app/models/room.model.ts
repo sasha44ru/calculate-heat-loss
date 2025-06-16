@@ -12,4 +12,10 @@ export interface Room {
   windows: Construction[];
   infiltrationRate: number; // инфильтрация, м³/ч
   volume?: number; // расчётный объём
+  detailedResults?: {
+    walls: { construction: Construction, result: any }[],
+    floors: { construction: Construction, result: any }[],
+    ceilings: { construction: Construction, result: any }[],
+    windows: { construction: Construction, result: any }[]
+  };
 }

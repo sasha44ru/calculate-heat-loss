@@ -37,7 +37,7 @@ main {
 }
 
 .results-panel {
-  grid-column: 2;
+  grid-column: 3;
   grid-row: 2 / -1;
   background: #f5f5f5;
   padding: 20px;
@@ -118,4 +118,85 @@ button {
 
 button:hover {
   background: #0b7dda;
+}
+
+
+.detailed-results {
+  margin-top: 20px;
+  padding-top: 20px;
+  border-top: 1px solid #eee;
+}
+
+.construction-type-results {
+  margin-bottom: 25px;
+}
+
+.construction-type-results h4 {
+  color: #555;
+  margin-bottom: 10px;
+  padding-bottom: 5px;
+  border-bottom: 1px solid #ddd;
+}
+
+.construction-result {
+  background: white;
+  padding: 15px;
+  margin-bottom: 15px;
+  border-radius: 4px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+}
+
+.construction-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 10px;
+}
+
+.construction-header h5 {
+  margin: 0;
+  font-size: 16px;
+}
+
+.total-loss {
+  font-weight: bold;
+  color: #f44336;
+}
+
+.construction-properties {
+  display: flex;
+  gap: 15px;
+  margin-bottom: 10px;
+  font-size: 14px;
+  color: #666;
+}
+
+.layers-results {
+  margin-top: 10px;
+}
+
+.layer-result {
+  display: flex;
+  padding: 8px;
+  background: #f9f9f9;
+  margin-bottom: 5px;
+  border-radius: 3px;
+  font-size: 14px;
+}
+
+.layer-result span {
+  flex: 1;
+}
+
+.layer-result .material {
+  font-weight: 500;
+}
+
+.layer-result .thickness {
+  text-align: center;
+}
+
+.layer-result .conductivity {
+  text-align: right;
+  color: #666;
 }

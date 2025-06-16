@@ -41,7 +41,41 @@ export class App implements OnInit {
   }
 
   calculate(): void {
+    const detailedResults = {
+      walls: [] as any[],
+      floors: [] as any[],
+      ceilings: [] as any[],
+      windows: [] as any[]
+    };
+
+    // Функция для расчёта одной конструкции
+    const calculateConstruction = (construction: Construction, collection: any[], externalTemp?: number) => {
+      const temp = externalTemp !== undefined ? externalTemp : this.getAdjacentTemperature(construction);
+      const result = this.calculationService.calculateConstructionHeatLossDetailed(
+        construction,
+        this.room.internalTemp,
+        temp
+      );
+      collection.push({ construction, result });
+    };
+
+    // Расчёт всех конструкций
+    this.room.walls.forEach(w => calculateConstruction(w, detailedResults.walls));
+    this.room.floors.forEach(f => calculateConstruction(f, detailedResults.floors));
+    this.room.ceilings.forEach(c => calculateConstruction(c, detailedResults.ceilings));
+    this.room.windows.forEach(w => calculateConstruction(w, detailedResults.windows, this.room.externalTemp));
+
+    this.room.detailedResults = detailedResults;
     this.calculationResult = this.calculationService.calculateHeatLoss(this.room);
+  }
+
+  private getAdjacentTemperature(construction: Construction): number {
+    if (construction.hasHeatedAdjacent) {
+      return this.room.internalTemp;
+    }
+    return construction.adjacentTemp !== undefined
+      ? construction.adjacentTemp
+      : this.room.externalTemp;
   }
 
   addWall(): void {
@@ -145,6 +179,36 @@ export class App implements OnInit {
       case ConstructionType.WINDOW: return this.room.windows;
       default: return [];
     }
+  }
+
+  getConstructionLoss(construction: Construction): number {
+    if (!this.room.detailedResults) return 0;
+
+    const results = this.room.detailedResults[
+      construction.type === ConstructionType.WALL ? 'walls' :
+        construction.type === ConstructionType.FLOOR ? 'floors' :
+          construction.type === ConstructionType.CEILING ? 'ceilings' : 'windows'
+      ];
+
+    const found = results.find(r => r.construction.id === construction.id);
+    return found ? found.result.total : 0;
+  }
+
+  getOrientationName(orientation: string | undefined): string {
+    const orientations = {
+      north: 'Север',
+      south: 'Юг',
+      east: 'Восток',
+      west: 'Запад'
+    };
+    // @ts-ignore
+    return orientations[orientation] || 'Не указана';
+  }
+
+  getAdjacentTempForDisplay(construction: Construction): string {
+    if (construction.hasHeatedAdjacent) return 'Отапливаемое помещение';
+    if (construction.adjacentTemp !== undefined) return construction.adjacentTemp.toString();
+    return this.room.externalTemp.toString();
   }
 
   // Аналогичные методы для добавления пола, потолка, окна

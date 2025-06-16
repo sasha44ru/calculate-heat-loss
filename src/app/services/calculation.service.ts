@@ -71,6 +71,43 @@ export class CalculationService {
     return results;
   }
 
+  calculateConstructionHeatLossDetailed(construction: Construction, internalTemp: number, externalTemp: number): { total: number, layers: { material: string, resistance: number, loss: number }[] } {
+    if (Math.abs(internalTemp - externalTemp) < 0.1) {
+      return { total: 0, layers: [] };
+    }
+
+    const result = {
+      total: 0,
+      layers: [] as { material: string, resistance: number, loss: number }[]
+    };
+
+    let currentR = 0.13; // начальное внутреннее сопротивление
+
+    // Сортируем слои по порядку
+    const sortedLayers = [...construction.layers].sort((a, b) => a.order - b.order);
+
+    sortedLayers.forEach(layer => {
+      const layerR = layer.thickness / layer.material.conductivity;
+      currentR += layerR;
+
+      const layerLoss = (1 / currentR) * construction.area * (internalTemp - externalTemp);
+
+      result.layers.push({
+        material: layer.material.name,
+        resistance: layerR,
+        loss: layerLoss
+      });
+
+      result.total += layerLoss;
+    });
+
+    // Добавляем внешнее сопротивление
+    currentR += 0.04;
+    result.total = (1 / currentR) * construction.area * (internalTemp - externalTemp);
+
+    return result;
+  }
+
   private getAdjacentTemperature(construction: Construction, room: Room): number {
     if (construction.hasHeatedAdjacent) {
       return room.internalTemp; // соседнее помещение отапливается

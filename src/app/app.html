@@ -160,6 +160,12 @@
                   <span>Ориентация: {{getOrientationName(wall.orientation)}}</span>
                   <span>Температура снаружи: {{getAdjacentTempForDisplay(wall)}}°C</span>
                 </div>
+                  @if (getLayerDetails(wall).baseLoss) {
+                    <div class="base-loss">
+                      <span>Потери без всех слоёв: </span>
+                      <strong>{{getLayerDetails(wall).baseLoss | number:'1.0-0'}} Вт</strong>
+                    </div>
+                  }
                   <div class="layers-results">
                     @for (layer of getLayerDetails(wall).layers; track $index) {
                       <div class="layer-result">
@@ -173,6 +179,10 @@
                           <div class="stat">
                             <span class="label">Сам по себе:</span>
                             <span class="value">{{layer.standaloneLoss | number:'1.0-0'}} Вт</span>
+                          </div>
+                          <div class="stat">
+                            <div class="label">Без слоя</div>
+                            <div class="value">{{getLayerDetails(wall).lossesWithoutLayers[$index] | number:'1.0-0'}} Вт</div>
                           </div>
                           <div class="stat">
                             <span class="label">В системе:</span>

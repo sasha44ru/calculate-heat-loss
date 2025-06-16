@@ -1,14 +1,25 @@
 import { Injectable } from '@angular/core';
 import { Room } from '../models/room.model';
-import {Construction, ConstructionLayer, ConstructionType, LayerContributionResult} from '../models/construction.model';
+import {
+  Construction,
+  ConstructionLayer,
+  ConstructionType,
+  HeatLossResult,
+  LayerContributionResult
+} from '../models/construction.model';
 import {MATERIALS} from '../models/material.model';
 
 @Injectable({
   providedIn: 'root'
 })
 export class CalculationService {
-  calculateHeatLoss(room: Room): { total: number, details: any } {
-    const results = {
+  private readonly INTERNAL_RESISTANCE = 0.13; // Rsi (м²·°C/Вт)
+  private readonly EXTERNAL_RESISTANCE = 0.04; // Rse (м²·°C/Вт)
+  private readonly AIR_DENSITY = 1.2; // кг/м³
+  private readonly AIR_HEAT_CAPACITY = 1.005; // кДж/(кг·°C)
+
+  calculateHeatLoss(room: Room): HeatLossResult {
+    const results: HeatLossResult = {
       total: 0,
       details: {
         walls: 0,
@@ -19,54 +30,28 @@ export class CalculationService {
       }
     };
 
-    // Расчёт для стен
-    room.walls.forEach(wall => {
-      const loss = this.calculateConstructionHeatLoss(
-        wall,
-        room.internalTemp,
-        this.getAdjacentTemperature(wall, room)
-      );
-      results.details.walls += loss;
-      results.total += loss;
-    });
+    // Расчет для всех конструкций
+    ['walls', 'floors', 'ceilings', 'windows'].forEach(type => {
+      // @ts-ignore
+      room[type as keyof Room].forEach(construction => {
+        const externalTemp = type === 'windows'
+          ? room.externalTemp
+          : this.getAdjacentTemperature(construction, room);
 
-    // Расчёт для полов
-    room.floors.forEach(floor => {
-      const loss = this.calculateConstructionHeatLoss(
-        floor,
-        room.internalTemp,
-        this.getAdjacentTemperature(floor, room)
-      );
-      results.details.floors += loss;
-      results.total += loss;
-    });
+        const loss = this.calculateConstructionHeatLoss(
+          construction,
+          room.internalTemp,
+          externalTemp
+        );
 
-    // Расчёт для потолков
-    room.ceilings.forEach(ceiling => {
-      const loss = this.calculateConstructionHeatLoss(
-        ceiling,
-        room.internalTemp,
-        this.getAdjacentTemperature(ceiling, room)
-      );
-      results.details.ceilings += loss;
-      results.total += loss;
-    });
-
-    // Расчёт для окон
-    room.windows.forEach(window => {
-      const loss = this.calculateConstructionHeatLoss(
-        window,
-        room.internalTemp,
-        room.externalTemp
-      );
-      results.details.windows += loss;
-      results.total += loss;
+        results.details[type as keyof typeof results.details] += loss;
+        results.total += loss;
+      });
     });
 
     // Инфильтрация
-    const infiltrationLoss = this.calculateInfiltrationHeatLoss(room);
-    results.details.infiltration = infiltrationLoss;
-    results.total += infiltrationLoss;
+    results.details.infiltration = this.calculateInfiltrationHeatLoss(room);
+    results.total += results.details.infiltration;
 
     return results;
   }
@@ -81,42 +66,50 @@ export class CalculationService {
     const result: LayerContributionResult = {
       total: 0,
       layers: [],
-      standaloneLayerLosses: []
+      standaloneLayerLosses: [],
+      lossesWithoutLayers: []
     };
 
-    if (Math.abs(deltaT) < 0.1) return result;
+    if (Math.abs(deltaT) < 0.1 || construction.layers.length === 0) {
+      return result;
+    }
 
     // Рассчитываем общее сопротивление
-    let totalR = 0.13; // Внутреннее сопротивление
-    construction.layers
-      .sort((a, b) => a.order - b.order)
-      .forEach(layer => {
-        totalR += layer.thickness / layer.material.conductivity;
-      });
-    totalR += 0.04; // Внешнее сопротивление
-
-    // Общие теплопотери конструкции
+    const totalR = this.calculateTotalResistance(construction.layers);
     result.total = (1 / totalR) * area * deltaT;
 
-    // Рассчитываем вклады слоев
-    let cumulativeR = 0.13;
+    // Рассчитываем базовые потери без всех слоев (только стандартные сопротивления)
+    const baseR = this.INTERNAL_RESISTANCE + this.EXTERNAL_RESISTANCE;
+    const baseLoss = (1 / baseR) * area * deltaT;
+    result.baseLoss = baseLoss;
+
     construction.layers
       .sort((a, b) => a.order - b.order)
       .forEach(layer => {
         const layerR = layer.thickness / layer.material.conductivity;
 
-        // 1. Потери слоя в изоляции (сам по себе)
-        const standaloneLoss = (1 / layerR) * area * deltaT;
+        // 1. Потери слоя "сам по себе"
+        const standaloneR = this.INTERNAL_RESISTANCE + layerR + this.EXTERNAL_RESISTANCE;
+        const standaloneLoss = (1 / standaloneR) * area * deltaT;
 
-        // 2. Вклад слоя в общие потери
-        const prevR = cumulativeR;
-        cumulativeR += layerR;
-        const systemLossWithLayer = (1 / (cumulativeR + 0.04)) * area * deltaT;
-        const systemLossWithoutLayer = (1 / (prevR + 0.04)) * area * deltaT;
-        const layerContribution = systemLossWithoutLayer - systemLossWithLayer;
+        // 2. Потери без текущего слоя
+        let lossWithoutLayer: number;
+        if (construction.layers.length === 1) {
+          // Если это единственный слой, используем базовые потери
+          lossWithoutLayer = baseLoss;
+        } else {
+          const layersWithoutCurrent = construction.layers.filter(l => l.order !== layer.order);
+          const RWithoutLayer = this.calculateTotalResistance(layersWithoutCurrent);
+          lossWithoutLayer = (1 / RWithoutLayer) * area * deltaT;
+        }
 
-        // 3. Эффективность слоя (сколько тепла сохраняет)
-        const efficiency = (layerContribution / result.total) * 100;
+        result.lossesWithoutLayers.push(lossWithoutLayer);
+
+        // 3. Вклад слоя (сколько тепла сохраняет)
+        const layerContribution = result.total - lossWithoutLayer;
+
+        // 4. Эффективность как доля в общем сопротивлении
+        const efficiency = (layerR / totalR) * 100;
 
         result.layers.push({
           name: layer.material.name,
@@ -134,21 +127,14 @@ export class CalculationService {
     return result;
   }
 
-  private getAdjacentTemperature(construction: Construction, room: Room): number {
-    if (construction.hasHeatedAdjacent) {
-      return room.internalTemp; // соседнее помещение отапливается
-    }
-    return construction.adjacentTemp !== undefined
-      ? construction.adjacentTemp
-      : room.externalTemp;
-  }
-
   private calculateConstructionHeatLoss(
     construction: Construction,
     internalTemp: number,
     externalTemp: number
   ): number {
-    if (Math.abs(internalTemp - externalTemp) < 0.1) return 0;
+    if (Math.abs(internalTemp - externalTemp) < 0.1 || construction.layers.length === 0) {
+      return 0;
+    }
 
     const R = this.calculateTotalResistance(construction.layers);
     return (1 / R) * construction.area * (internalTemp - externalTemp);
@@ -157,32 +143,46 @@ export class CalculationService {
   private calculateTotalResistance(layers: ConstructionLayer[]): number {
     if (layers.length === 0) return 0;
 
-    let totalR = 0.13; // внутреннее сопротивление
+    let totalR = this.INTERNAL_RESISTANCE;
 
-    // Сортируем слои по порядку
-    const sortedLayers = [...layers].sort((a, b) => a.order - b.order);
+    layers
+      .sort((a, b) => a.order - b.order)
+      .forEach(layer => {
+        totalR += layer.thickness / layer.material.conductivity;
+      });
 
-    sortedLayers.forEach(layer => {
-      totalR += layer.thickness / layer.material.conductivity;
-    });
-
-    totalR += 0.04; // внешнее сопротивление
-    return totalR;
+    return totalR + this.EXTERNAL_RESISTANCE;
   }
 
   private calculateInfiltrationHeatLoss(room: Room): number {
-    // Рассчитываем объём помещения
     const volume = this.calculateRoomVolume(room);
-    const L = room.infiltrationRate * volume;
-    return 0.28 * L * 1.2 * 1.005 * (room.internalTemp - room.externalTemp);
+    const L = room.infiltrationRate * volume; // Воздухообмен, м³/ч
+    return 0.28 * L * this.AIR_DENSITY * this.AIR_HEAT_CAPACITY *
+      (room.internalTemp - room.externalTemp);
   }
 
   private calculateRoomVolume(room: Room): number {
-    // Простая оценка объёма через площадь пола и высоту
+    // Более точный расчет объема помещения
     if (room.floors.length > 0) {
-      return room.floors.reduce((sum, floor) => sum + floor.area, 0) * room.height;
+      const floorArea = room.floors.reduce((sum, floor) => sum + floor.area, 0);
+      return floorArea * room.height;
+    } else if (room.walls.length > 0) {
+      // Оценка через стены (для прямоугольных помещений)
+      const wallAreas = room.walls.map(w => w.area);
+      const perimeter = wallAreas.reduce((sum, area) => sum + area, 0) / room.height;
+      const approxArea = Math.pow(perimeter / 4, 2); // Предполагаем квадратное помещение
+      return approxArea * room.height;
     }
-    return 50; // значение по умолчанию для небольших помещений
+    return 50; // значение по умолчанию
+  }
+
+  private getAdjacentTemperature(construction: Construction, room: Room): number {
+    if (construction.hasHeatedAdjacent) {
+      return room.internalTemp;
+    }
+    return construction.adjacentTemp !== undefined
+      ? construction.adjacentTemp
+      : room.externalTemp;
   }
 
   // Метод для получения рекомендуемых материалов по типу конструкции

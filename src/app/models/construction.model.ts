@@ -41,4 +41,17 @@ export interface LayerContributionResult {
   total: number;
   layers: LayerContribution[];
   standaloneLayerLosses: number[];
+  lossesWithoutLayers: number[];
+  baseLoss?: number;
+}
+
+export interface HeatLossResult {
+  total: number;
+  details: {
+    walls: number;
+    floors: number;
+    ceilings: number;
+    windows: number;
+    infiltration: number;
+  };
 }

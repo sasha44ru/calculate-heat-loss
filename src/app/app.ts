@@ -4,7 +4,7 @@ import {CalculationService} from './services/calculation.service';
 import {FormsModule} from '@angular/forms';
 import {ConstructionInput} from './components/construction-input/construction-input';
 import {DecimalPipe} from '@angular/common';
-import {Construction, ConstructionType} from './models/construction.model';
+import {Construction, ConstructionType, HeatLossResult, LayerContributionResult} from './models/construction.model';
 
 @Component({
   selector: 'app-root',
@@ -28,7 +28,7 @@ export class App implements OnInit {
     windows: []
   };
 
-  calculationResult: any = null;
+  calculationResult: HeatLossResult | null = null;
   activeTab: 'walls' | 'floors' | 'ceilings' | 'windows' | 'settings' = 'walls';
 
   constructor(private calculationService: CalculationService) {}
@@ -41,32 +41,34 @@ export class App implements OnInit {
   }
 
   calculate(): void {
+    this.calculationResult = this.calculationService.calculateHeatLoss(this.room);
+
+    // Рассчитываем детализированные результаты для каждой конструкции
     const detailedResults = {
-      walls: [] as any[],
-      floors: [] as any[],
-      ceilings: [] as any[],
-      windows: [] as any[]
+      walls: this.calculateConstructionResults(this.room.walls),
+      floors: this.calculateConstructionResults(this.room.floors),
+      ceilings: this.calculateConstructionResults(this.room.ceilings),
+      windows: this.calculateConstructionResults(this.room.windows, this.room.externalTemp)
     };
-
-    // Универсальная функция расчета
-    const calculate = (construction: Construction, collection: any[], externalTemp?: number) => {
-      const temp = externalTemp ?? this.getAdjacentTemperature(construction);
-      const result = this.calculationService.calculateLayerContribution(
-        construction,
-        this.room.internalTemp,
-        temp
-      );
-      collection.push({ construction, result });
-    };
-
-    // Расчет для всех конструкций
-    this.room.walls.forEach(w => calculate(w, detailedResults.walls));
-    this.room.floors.forEach(f => calculate(f, detailedResults.floors));
-    this.room.ceilings.forEach(c => calculate(c, detailedResults.ceilings));
-    this.room.windows.forEach(w => calculate(w, detailedResults.windows, this.room.externalTemp));
 
     this.room.detailedResults = detailedResults;
-    this.calculationResult = this.calculationService.calculateHeatLoss(this.room);
+  }
+
+  private calculateConstructionResults(
+    constructions: Construction[],
+    externalTemp?: number
+  ): { construction: Construction; result: LayerContributionResult }[] {
+    return constructions.map(construction => {
+      const temp = externalTemp ?? this.getAdjacentTemperature(construction);
+      return {
+        construction,
+        result: this.calculationService.calculateLayerContribution(
+          construction,
+          this.room.internalTemp,
+          temp
+        )
+      };
+    });
   }
 
   private getAdjacentTemperature(construction: Construction): number {
@@ -211,8 +213,8 @@ export class App implements OnInit {
     return this.room.externalTemp.toString();
   }
 
-  getLayerDetails(construction: Construction): { layers: any[], total: number } {
-    if (!this.room.detailedResults) return { layers: [], total: 0 };
+  getLayerDetails(construction: Construction): LayerContributionResult {
+    if (!this.room.detailedResults) return { layers: [], total: 0, standaloneLayerLosses: [], lossesWithoutLayers: [] };
 
     const type = construction.type === ConstructionType.WALL ? 'walls' :
       construction.type === ConstructionType.FLOOR ? 'floors' :

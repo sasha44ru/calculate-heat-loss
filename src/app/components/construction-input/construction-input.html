@@ -1,6 +1,6 @@
 <div class="construction-card" [class.external]="construction.isExternal">
   <div class="construction-header">
-    <h3>{{construction.name}}</h3>
+    <h3> <input type="text" [(ngModel)]="construction.name" (change)="emitChanges()"></h3>
     <button (click)="onRemove()">Удалить конструкцию</button>
   </div>
 

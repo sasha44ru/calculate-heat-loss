@@ -4,6 +4,7 @@ export interface Material {
   conductivity: number; // λ, Вт/(м·°C)
   image?: string; // путь к изображению материала
   category?: 'wall' | 'insulation' | 'window' | 'floor' | 'roof';
+  uValue?: number; // Для окон
 }
 
 export const MATERIALS: Material[] = [
@@ -19,9 +20,9 @@ export const MATERIALS: Material[] = [
   { id: 9, name: 'Гипсовая штукатурка', conductivity: 0.25, category: 'wall' },
 
   // Материалы для окон
-  { id: 10, name: 'Однокамерный стеклопакет', conductivity: 2.8, category: 'window' },
-  { id: 11, name: 'Двухкамерный стеклопакет', conductivity: 1.4, category: 'window' },
-  { id: 12, name: 'Трехкамерный стеклопакет', conductivity: 0.9, category: 'window' },
+  { id: 10, name: 'Однокамерный стеклопакет', conductivity: 2.8, category: 'window', uValue: 1.1 },
+  { id: 11, name: 'Двухкамерный стеклопакет', conductivity: 1.9, category: 'window', uValue: 1.1 },
+  { id: 12, name: 'Трехкамерный стеклопакет', conductivity: 0.9, category: 'window', uValue: 1.1 },
 
   // Материалы для полов
   { id: 20, name: 'Цементная стяжка', conductivity: 1.4, category: 'floor' },

@@ -31,7 +31,7 @@ export class CalculationService {
     };
 
     // Расчет для всех конструкций
-    ['walls', 'floors', 'ceilings', 'windows'].forEach(type => {
+    ['walls', 'floors', 'ceilings'].forEach(type => {
       // @ts-ignore
       room[type as keyof Room].forEach(construction => {
         const externalTemp = type === 'windows'
@@ -49,6 +49,12 @@ export class CalculationService {
       });
     });
 
+    room.windows.forEach(window => {
+      const loss = this.calculateWindowHeatLoss(window, room.internalTemp, room.externalTemp);
+      results.details.windows += loss;
+      results.total += loss;
+    });
+
     // Инфильтрация
     results.details.infiltration = this.calculateInfiltrationHeatLoss(room);
     results.total += results.details.infiltration;
@@ -61,6 +67,10 @@ export class CalculationService {
     internalTemp: number,
     externalTemp: number
   ): LayerContributionResult {
+    if (construction.type === ConstructionType.WINDOW) {
+      return this.calculateWindowContribution(construction, internalTemp, externalTemp);
+    }
+
     const deltaT = internalTemp - externalTemp;
     const area = construction.area;
     const result: LayerContributionResult = {
@@ -127,6 +137,53 @@ export class CalculationService {
     return result;
   }
 
+  private calculateWindowContribution(
+    window: Construction,
+    internalTemp: number,
+    externalTemp: number
+  ): LayerContributionResult {
+    const deltaT = internalTemp - externalTemp;
+    const area = window.area;
+    const result: LayerContributionResult = {
+      total: 0,
+      layers: [],
+      standaloneLayerLosses: [],
+      lossesWithoutLayers: [],
+      baseLoss: 0
+    };
+
+    if (window.layers.length === 0 || Math.abs(deltaT) < 0.1) {
+      return result;
+    }
+
+    // U-фактор берем из материала стеклопакета
+    const uValue = window.layers[0].material.conductivity; // Здесь conductivity = U-фактор
+    result.total = uValue * area * deltaT;
+
+    // Для окон считаем только общие потери (не разбиваем по слоям)
+    result.layers.push({
+      name: window.layers[0].material.name,
+      material: window.layers[0].material,
+      thickness: window.layers[0].thickness,
+      resistance: 1 / uValue, // R = 1/U
+      standaloneLoss: result.total, // Для окон standalone = общим потерям
+      contribution: result.total,   // Полный вклад
+      efficiency: 100              // 100% так как один элемент
+    });
+
+    return result;
+  }
+
+  private calculateWindowHeatLoss(window: Construction, internalTemp: number, externalTemp: number): number {
+    if (window.layers.length === 0) return 0;
+
+    // Берём U-фактор из материала стеклопакета (или можно добавить отдельное поле)
+    const uValue = window.layers[0].material.conductivity; // Здесь conductivity должен быть U-фактором
+    const deltaT = internalTemp - externalTemp;
+
+    return uValue * window.area * deltaT;
+  }
+
   private calculateConstructionHeatLoss(
     construction: Construction,
     internalTemp: number,
@@ -157,8 +214,7 @@ export class CalculationService {
   private calculateInfiltrationHeatLoss(room: Room): number {
     const volume = this.calculateRoomVolume(room);
     const L = room.infiltrationRate * volume; // Воздухообмен, м³/ч
-    return 0.28 * L * this.AIR_DENSITY * this.AIR_HEAT_CAPACITY *
-      (room.internalTemp - room.externalTemp);
+    return 0.28 * L * this.AIR_DENSITY * this.AIR_HEAT_CAPACITY * (room.internalTemp - room.externalTemp);
   }
 
   private calculateRoomVolume(room: Room): number {

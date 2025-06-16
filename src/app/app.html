@@ -115,33 +115,6 @@
 
 
     @if (calculationResult) {
-<!--      <div class="results">-->
-<!--        <h3>Общие теплопотери: {{calculationResult.total | number:'1.0-0'}} Вт</h3>-->
-
-<!--        <div class="result-details">-->
-<!--          <div class="result-item">-->
-<!--            <span class="label">Стены:</span>-->
-<!--            <span class="value">{{calculationResult.details.walls | number:'1.0-0'}} Вт</span>-->
-<!--          </div>-->
-<!--          <div class="result-item">-->
-<!--            <span class="label">Полы:</span>-->
-<!--            <span class="value">{{calculationResult.details.floors | number:'1.0-0'}} Вт</span>-->
-<!--          </div>-->
-<!--          <div class="result-item">-->
-<!--            <span class="label">Потолки:</span>-->
-<!--            <span class="value">{{calculationResult.details.ceilings | number:'1.0-0'}} Вт</span>-->
-<!--          </div>-->
-<!--          <div class="result-item">-->
-<!--            <span class="label">Окна:</span>-->
-<!--            <span class="value">{{calculationResult.details.windows | number:'1.0-0'}} Вт</span>-->
-<!--          </div>-->
-<!--          <div class="result-item">-->
-<!--            <span class="label">Инфильтрация:</span>-->
-<!--            <span class="value">{{calculationResult.details.infiltration | number:'1.0-0'}} Вт</span>-->
-<!--          </div>-->
-<!--        </div>-->
-<!--      </div>-->
-
       <div class="results">
         <h3>Общие теплопотери: {{calculationResult.total | number:'1.0-0'}} Вт</h3>
 
@@ -187,15 +160,32 @@
                   <span>Ориентация: {{getOrientationName(wall.orientation)}}</span>
                   <span>Температура снаружи: {{getAdjacentTempForDisplay(wall)}}°C</span>
                 </div>
-                <div class="layers-results">
-                  @for (layer of wall.layers; track $index) {
-                    <div class="layer-result">
-                      <span class="material">{{layer.material.name}}</span>
-                      <span class="thickness">{{layer.thickness}} м</span>
-                      <span class="conductivity">λ = {{layer.material.conductivity}} Вт/(м·°C)</span>
-                    </div>
-                  }
-                </div>
+                  <div class="layers-results">
+                    @for (layer of getLayerDetails(wall).layers; track $index) {
+                      <div class="layer-result">
+                        <div class="layer-info">
+                          <span class="material">{{layer.name}}</span>
+                          <span class="thickness">{{layer.thickness}} м</span>
+                          <span class="conductivity">λ = {{layer.material.conductivity}} Вт/(м·°C)</span>
+                        </div>
+
+                        <div class="layer-stats">
+                          <div class="stat">
+                            <span class="label">Сам по себе:</span>
+                            <span class="value">{{layer.standaloneLoss | number:'1.0-0'}} Вт</span>
+                          </div>
+                          <div class="stat">
+                            <span class="label">В системе:</span>
+                            <span class="value">{{layer.contribution | number:'1.0-0'}} Вт</span>
+                          </div>
+                          <div class="stat">
+                            <span class="label">Эффективность:</span>
+                            <span class="value">{{layer.efficiency | number:'1.1-1'}}%</span>
+                          </div>
+                        </div>
+                      </div>
+                    }
+                  </div>
               </div>
               }
             </div>
@@ -217,11 +207,28 @@
                     <span>Температура снаружи: {{getAdjacentTempForDisplay(floor)}}°C</span>
                   </div>
                   <div class="layers-results">
-                    @for (layer of floor.layers; track $index) {
+                    @for (layer of getLayerDetails(floor).layers; track $index) {
                       <div class="layer-result">
-                        <span class="material">{{layer.material.name}}</span>
-                        <span class="thickness">{{layer.thickness}} м</span>
-                        <span class="conductivity">λ = {{layer.material.conductivity}} Вт/(м·°C)</span>
+                        <div class="layer-info">
+                          <span class="material">{{layer.name}}</span>
+                          <span class="thickness">{{layer.thickness}} м</span>
+                          <span class="conductivity">λ = {{layer.material.conductivity}} Вт/(м·°C)</span>
+                        </div>
+
+                        <div class="layer-stats">
+                          <div class="stat">
+                            <span class="label">Сам по себе:</span>
+                            <span class="value">{{layer.standaloneLoss | number:'1.0-0'}} Вт</span>
+                          </div>
+                          <div class="stat">
+                            <span class="label">В системе:</span>
+                            <span class="value">{{layer.contribution | number:'1.0-0'}} Вт</span>
+                          </div>
+                          <div class="stat">
+                            <span class="label">Эффективность:</span>
+                            <span class="value">{{layer.efficiency | number:'1.1-1'}}%</span>
+                          </div>
+                        </div>
                       </div>
                     }
                   </div>
@@ -246,11 +253,28 @@
                     <span>Температура снаружи: {{getAdjacentTempForDisplay(ceiling)}}°C</span>
                   </div>
                   <div class="layers-results">
-                    @for (layer of ceiling.layers; track $index) {
+                    @for (layer of getLayerDetails(ceiling).layers; track $index) {
                       <div class="layer-result">
-                        <span class="material">{{layer.material.name}}</span>
-                        <span class="thickness">{{layer.thickness}} м</span>
-                        <span class="conductivity">λ = {{layer.material.conductivity}} Вт/(м·°C)</span>
+                        <div class="layer-info">
+                          <span class="material">{{layer.name}}</span>
+                          <span class="thickness">{{layer.thickness}} м</span>
+                          <span class="conductivity">λ = {{layer.material.conductivity}} Вт/(м·°C)</span>
+                        </div>
+
+                        <div class="layer-stats">
+                          <div class="stat">
+                            <span class="label">Сам по себе:</span>
+                            <span class="value">{{layer.standaloneLoss | number:'1.0-0'}} Вт</span>
+                          </div>
+                          <div class="stat">
+                            <span class="label">В системе:</span>
+                            <span class="value">{{layer.contribution | number:'1.0-0'}} Вт</span>
+                          </div>
+                          <div class="stat">
+                            <span class="label">Эффективность:</span>
+                            <span class="value">{{layer.efficiency | number:'1.1-1'}}%</span>
+                          </div>
+                        </div>
                       </div>
                     }
                   </div>

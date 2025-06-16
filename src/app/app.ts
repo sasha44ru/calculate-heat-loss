@@ -48,10 +48,10 @@ export class App implements OnInit {
       windows: [] as any[]
     };
 
-    // Функция для расчёта одной конструкции
-    const calculateConstruction = (construction: Construction, collection: any[], externalTemp?: number) => {
-      const temp = externalTemp !== undefined ? externalTemp : this.getAdjacentTemperature(construction);
-      const result = this.calculationService.calculateConstructionHeatLossDetailed(
+    // Универсальная функция расчета
+    const calculate = (construction: Construction, collection: any[], externalTemp?: number) => {
+      const temp = externalTemp ?? this.getAdjacentTemperature(construction);
+      const result = this.calculationService.calculateLayerContribution(
         construction,
         this.room.internalTemp,
         temp
@@ -59,11 +59,11 @@ export class App implements OnInit {
       collection.push({ construction, result });
     };
 
-    // Расчёт всех конструкций
-    this.room.walls.forEach(w => calculateConstruction(w, detailedResults.walls));
-    this.room.floors.forEach(f => calculateConstruction(f, detailedResults.floors));
-    this.room.ceilings.forEach(c => calculateConstruction(c, detailedResults.ceilings));
-    this.room.windows.forEach(w => calculateConstruction(w, detailedResults.windows, this.room.externalTemp));
+    // Расчет для всех конструкций
+    this.room.walls.forEach(w => calculate(w, detailedResults.walls));
+    this.room.floors.forEach(f => calculate(f, detailedResults.floors));
+    this.room.ceilings.forEach(c => calculate(c, detailedResults.ceilings));
+    this.room.windows.forEach(w => calculate(w, detailedResults.windows, this.room.externalTemp));
 
     this.room.detailedResults = detailedResults;
     this.calculationResult = this.calculationService.calculateHeatLoss(this.room);
@@ -209,6 +209,17 @@ export class App implements OnInit {
     if (construction.hasHeatedAdjacent) return 'Отапливаемое помещение';
     if (construction.adjacentTemp !== undefined) return construction.adjacentTemp.toString();
     return this.room.externalTemp.toString();
+  }
+
+  getLayerDetails(construction: Construction): { layers: any[], total: number } {
+    if (!this.room.detailedResults) return { layers: [], total: 0 };
+
+    const type = construction.type === ConstructionType.WALL ? 'walls' :
+      construction.type === ConstructionType.FLOOR ? 'floors' :
+        construction.type === ConstructionType.CEILING ? 'ceilings' : 'windows';
+
+    const found = this.room.detailedResults[type].find(r => r.construction.id === construction.id);
+    return found?.result || { layers: [], total: 0 };
   }
 
   // Аналогичные методы для добавления пола, потолка, окна

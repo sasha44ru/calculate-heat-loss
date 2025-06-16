@@ -26,3 +26,19 @@ export interface Construction {
   orientation?: 'north' | 'south' | 'east' | 'west'; // ориентация для стен
   hasHeatedAdjacent?: boolean; // есть ли отапливаемое помещение рядом
 }
+
+export interface LayerContribution {
+  name: string;
+  material: Material;
+  thickness: number;
+  resistance: number;
+  standaloneLoss: number;  // Потери если бы слой был один
+  contribution: number;    // Вклад в общие потери
+  efficiency: number;      // Эффективность (% сохраненного тепла)
+}
+
+export interface LayerContributionResult {
+  total: number;
+  layers: LayerContribution[];
+  standaloneLayerLosses: number[];
+}

@@ -2,7 +2,6 @@
   display: grid;
   grid-template-columns: 1fr 300px;
   grid-template-rows: auto auto 1fr;
-  height: 100vh;
   gap: 20px;
   padding: 20px;
 }
@@ -170,32 +169,65 @@ button:hover {
   color: #666;
 }
 
-.layers-results {
-  margin-top: 10px;
-}
-
 .layer-result {
   display: flex;
-  padding: 8px;
-  background: #f9f9f9;
-  margin-bottom: 5px;
-  border-radius: 3px;
-  font-size: 14px;
-}
+  justify-content: space-between;
+  padding: 12px;
+  margin-bottom: 8px;
+  background: #f8f9fa;
+  border-radius: 6px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.1);
 
-.layer-result span {
-  flex: 1;
-}
+  .layer-info {
+    flex: 2;
+    display: flex;
 
-.layer-result .material {
-  font-weight: 500;
-}
+    span {
+      margin-right: 15px;
+      font-size: 14px;
 
-.layer-result .thickness {
-  text-align: center;
-}
+      &.material {
+        font-weight: 500;
+        color: #333;
+      }
 
-.layer-result .conductivity {
-  text-align: right;
-  color: #666;
+      &.conductivity {
+        color: #666;
+      }
+    }
+  }
+
+  .layer-stats {
+    flex: 3;
+    display: flex;
+
+    .stat {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+
+      .label {
+        font-size: 12px;
+        color: #666;
+        margin-bottom: 4px;
+      }
+
+      .value {
+        font-weight: 500;
+
+        &:first-child {
+          color: #e53935; // Для "Сам по себе"
+        }
+
+        &:nth-child(2) {
+          color: #1e88e5; // Для "В системе"
+        }
+
+        &:last-child {
+          color: #43a047; // Для эффективности
+        }
+      }
+    }
+  }
 }

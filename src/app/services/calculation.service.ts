@@ -1,6 +1,6 @@
 import { Injectable } from '@angular/core';
 import { Room } from '../models/room.model';
-import {Construction, ConstructionLayer, ConstructionType} from '../models/construction.model';
+import {Construction, ConstructionLayer, ConstructionType, LayerContributionResult} from '../models/construction.model';
 import {MATERIALS} from '../models/material.model';
 
 @Injectable({
@@ -71,39 +71,65 @@ export class CalculationService {
     return results;
   }
 
-  calculateConstructionHeatLossDetailed(construction: Construction, internalTemp: number, externalTemp: number): { total: number, layers: { material: string, resistance: number, loss: number }[] } {
-    if (Math.abs(internalTemp - externalTemp) < 0.1) {
-      return { total: 0, layers: [] };
-    }
-
-    const result = {
+  calculateLayerContribution(
+    construction: Construction,
+    internalTemp: number,
+    externalTemp: number
+  ): LayerContributionResult {
+    const deltaT = internalTemp - externalTemp;
+    const area = construction.area;
+    const result: LayerContributionResult = {
       total: 0,
-      layers: [] as { material: string, resistance: number, loss: number }[]
+      layers: [],
+      standaloneLayerLosses: []
     };
 
-    let currentR = 0.13; // начальное внутреннее сопротивление
+    if (Math.abs(deltaT) < 0.1) return result;
 
-    // Сортируем слои по порядку
-    const sortedLayers = [...construction.layers].sort((a, b) => a.order - b.order);
-
-    sortedLayers.forEach(layer => {
-      const layerR = layer.thickness / layer.material.conductivity;
-      currentR += layerR;
-
-      const layerLoss = (1 / currentR) * construction.area * (internalTemp - externalTemp);
-
-      result.layers.push({
-        material: layer.material.name,
-        resistance: layerR,
-        loss: layerLoss
+    // Рассчитываем общее сопротивление
+    let totalR = 0.13; // Внутреннее сопротивление
+    construction.layers
+      .sort((a, b) => a.order - b.order)
+      .forEach(layer => {
+        totalR += layer.thickness / layer.material.conductivity;
       });
+    totalR += 0.04; // Внешнее сопротивление
 
-      result.total += layerLoss;
-    });
+    // Общие теплопотери конструкции
+    result.total = (1 / totalR) * area * deltaT;
 
-    // Добавляем внешнее сопротивление
-    currentR += 0.04;
-    result.total = (1 / currentR) * construction.area * (internalTemp - externalTemp);
+    // Рассчитываем вклады слоев
+    let cumulativeR = 0.13;
+    construction.layers
+      .sort((a, b) => a.order - b.order)
+      .forEach(layer => {
+        const layerR = layer.thickness / layer.material.conductivity;
+
+        // 1. Потери слоя в изоляции (сам по себе)
+        const standaloneLoss = (1 / layerR) * area * deltaT;
+
+        // 2. Вклад слоя в общие потери
+        const prevR = cumulativeR;
+        cumulativeR += layerR;
+        const systemLossWithLayer = (1 / (cumulativeR + 0.04)) * area * deltaT;
+        const systemLossWithoutLayer = (1 / (prevR + 0.04)) * area * deltaT;
+        const layerContribution = systemLossWithoutLayer - systemLossWithLayer;
+
+        // 3. Эффективность слоя (сколько тепла сохраняет)
+        const efficiency = (layerContribution / result.total) * 100;
+
+        result.layers.push({
+          name: layer.material.name,
+          material: layer.material,
+          thickness: layer.thickness,
+          resistance: layerR,
+          standaloneLoss,
+          contribution: layerContribution,
+          efficiency
+        });
+
+        result.standaloneLayerLosses.push(standaloneLoss);
+      });
 
     return result;
   }
